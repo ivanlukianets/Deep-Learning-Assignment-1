@@ -35,6 +35,8 @@
 
 ![Кореляції та надлишковість фічей](images/correlation_redundancy.png)
 
+### Ensembling
+
 ### Моделі: XGBoost + CatBoost + LogisticRegression (ансамбль)
 
 - **XGBoost** (5-fold CV, з повним пайплайном препроцесингу вбудованим у sklearn `Pipeline`) - єдина модель, яка реально навчилась: OOF ROC-AUC = **0.761**.
@@ -43,6 +45,14 @@
 - Висновок: заявлений "ансамбль трьох моделей" зараз *de facto* є одним XGBoost - щоб LR/CatBoost дали реальний внесок, потрібно прогнати їх через той самий `ColumnTransformer` (one-hot/impute), що й XGBoost, або для CatBoost - явно передати `cat_features`.
 
 ![Порівняння моделей і ROC-криві](images/model_comparison.png)
+
+## Soft voting
+
+Soft voting of xgboost from ml.ipynb and deep learning model from featured-engineered-dl-model.ipynb got such result on Kaggle:
+
+<img width="980" height="103" alt="Знімок екрана 2026-09-27 о 22 45 09" src="https://github.com/user-attachments/assets/378115af-3d0d-4ef1-be7f-2ef63c091806" />
+
+Basically, it was done by finding the mean of two predictions files that xgboost and deep learning models made. From ensemble perspective that's a soft voting with 0.5 trust coefficients. In the end, we got something in the middle between xgboost score and deep learning model
 
 ### Файли
 
