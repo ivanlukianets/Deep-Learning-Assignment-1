@@ -59,6 +59,91 @@ Model4: 0.74725 / 0.756
 
 Each model is described Deep learing model section.
 
+## Deep Learning Model
+
+### Architecture
+
+The model is a deep MLP designed for tabular binary classification,
+built with custom PyTorch components and trained via PyTorch Lightning.
+
+Input features (104/123) pass through a `FeatureGatingLayer` first, which
+applies a learned sigmoid gate per feature — allowing the model to
+suppress irrelevant inputs before any linear transformation. This is
+followed by four blocks of `MyLinearLayer → MyBatchNorm → LeakyReLU → 
+Dropout`, progressively reducing dimensionality from 104 → 52 → 26 → 
+13 → 6, before a final `Linear(6 → 1)` output layer.
+
+**Activation:** LeakyReLU(0.1) was chosen over ReLU to avoid zero 
+gradients on negative inputs (dying neuron problem).
+
+**Regularization:** Dropout(0.2) was applied after each block to 
+reduce overfitting, alongside BatchNorm for training stability and 
+gradient clipping (max_norm=1.0) to prevent exploding gradients.
+
+**Layer sizes** follow a progressive halving strategy (104→52→26→13→6),
+gradually compressing the feature space into a compact representation
+before the final prediction.
+
+---
+
+### Custom Components
+
+| Component | Type | Key Detail |
+|-----------|------|------------|
+| `MyLinearLayer` | Reimplementation | Default PyTorch weigh intialization |
+| `FeatureGatingLayer` | Original | LeCun init, sigmoid gate |
+| `MyBatchNorm` | Reimplementation | Manual running stats |
+| `MyAdam` | Optimizer | 1st/2nd moment + bias correction |
+
+---
+
+### Training Configuration
+
+| Setting | Value |
+|---------|-------|
+| Loss | BCEWithLogitsLoss |
+| Optimizer | MyAdam (lr=1e-3) |
+| Scheduler | CosineAnnealingLR (T_max=10) |
+| Batch size | 1024 |
+| Early stopping | patience=5, monitor=val_auroc |
+| Gradient clipping | max_norm=1.0 |
+
+---
+
+### Results
+
+Four models were trained with progressive improvements:
+
+| Model | Local Val AUROC | Kaggle Private AUC |
+|-------|-----------------|--------------------|
+| Model 1 | 0.732 | 0.71661 |
+| Model 2 | 0.738 | 0.72407 |
+| Model 3 | 0.739 | 0.72489 |
+| Model 4 | 0.756 | 0.74725 |
+
+model1 - only numeric data from train.csv 10 epoches
+model2 - only numeric data from train.csv, added one layer(to model1) and changed dropout to 0.3
+model3 - only numeric data from train.csv, added one layer(to model1) and changed dropout to 0.1
+model4 - transformed training df and test df used from ml pipeline, added one layer(to model1) and changed dropout to 0.1
+
+Here you can see all charts with metrics: https://wandb.ai/ilukianets-kyiv-school-of-economics/Deep%20learning%20assignment%201/workspace?nw=nwuserilukianets
+
+---
+
+### Conclusion
+
+The best model achieved a local validation AUROC of **0.756** and a 
+Kaggle private score of **0.747**, compared to the XGBoost baseline 
+of **0.7706**. The neural network performs reasonably well but does not 
+yet surpass the tree-based baseline, which is a common finding on 
+tabular datasets where gradient boosting tends to dominate.
+
+The gap between local validation (0.756) and Kaggle private score (0.747)
+suggests mild overfitting to the validation set. A natural next step
+would be adding more layers and depth to the network, alongside
+stronger regularization and additional feature engineering from the
+remaining auxiliary tables (credit card balances, installment payments).
+
 ### Ensembling
 
 ### Моделі: XGBoost + CatBoost + LogisticRegression (ансамбль)
