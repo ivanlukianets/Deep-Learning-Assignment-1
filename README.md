@@ -174,6 +174,9 @@ Basically, it was done by finding the mean of two predictions files that xgboost
 
 - `basic-data-exploration-dl.ipynb` - EDA: пропуски, викиди, кореляції, мульти-таблична аналітика.
 - `dl-ensemble-model-stacking.ipynb` - пайплайн XGBoost + спроба CatBoost/LogReg + ансамблювання (Part 1-3).
+- `Adversarial_validation.ipynb` - Adversarial validation on transformed data
+- `deep-learning-model.ipynb` - The first deep learning model
+- `featured-engineered-dl-model.ipynb` - Model4 from deep learning section
 
 
 ### AI-usage links:
