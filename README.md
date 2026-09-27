@@ -1,39 +1,54 @@
 # Deep-Learning-Assignment-1
 
-## Home Credit Default Risk - короткий підсумок
+## Home Credit Default Risk - short summary
 
-Ціль: передбачити ймовірність дефолту по кредиту (метрика - ROC-AUC, PR-AUC як допоміжна через дисбаланс класів). Дані: `application_train/test` + допоміжні таблиці `bureau`, `bureau_balance`, `previous_application`, `POS_CASH_balance`.
+Goal: predict the probability of loan default (metric: ROC-AUC, with PR-AUC as a secondary metric because of class imbalance).
 
-### Датасет
+### Data
 
-- Train: 307 511 рядків × 122 колонки, Test: 48 744 × 121.
-- Таргет сильно незбалансований: **8.07% дефолтів** проти 91.93% без дефолту.
-- Типи колонок: 65 float64, 41 int64, 16 object (категоріальні).
+The models use three tables:
 
-### Пропущені та неправильні значення
+- `application_train/test`: the main application table, one row per loan. It gives the financial amounts, `EXT_SOURCE_*` scores, age, employment length and the client's categorical attributes.
+- `bureau`: the client's loans at other banks. We derived debt relative to income, credit card limit utilization, the number of active and recent loans and the length of credit history.
+- `POS_CASH_balance`: previous POS and cash loans at Home Credit. We derived how often and how recently the client paid late, and how much is left to pay on active loans.
 
-- 67 із 122 колонок мають пропуски, разом ~23-24% усіх комірок. 41 фіча має >50% пропусків (переважно характеристики житла: `COMMONAREA_*`, `NONLIVINGAPARTMENTS_*`, `LIVINGAPARTMENTS_*` - ~68-70% NaN).
-- `DAYS_EMPLOYED` містить аномальне значення-заглушку **365243** (замість реального стажу) - це явно код "не працює/пенсіонер", а не пропуск; після заміни на NaN розподіл стає адекватним.
-- У категоріальних колонках зустрічається код `XNA` як прихований пропуск: `CODE_GENDER` (4 рядки), `ORGANIZATION_TYPE` (55 374 рядки).
-- Розподіл пропусків між train і test майже ідентичний (різниця <1.5 пунктів по всіх колонках) - це добре, ознака відсутності data leakage.
+These features are shared by the XGBoost pipeline, stacking, adversarial validation and DL Model4. DL Models 1-3 use only numeric columns from `application`. `bureau_balance` and `previous_application` were explored in EDA but not used in the models.
 
-![Пропущені значення](images/missing_values.png)
+### application_train overview
 
-### Розподіли та залежність від таргету
+- Train: 307,511 rows × 122 columns, Test: 48,744 × 121.
+- The target is heavily imbalanced: **8.07% defaults** vs 91.93% non-defaults.
+- Column types: 65 float64, 41 int64, 16 object (categorical).
 
-- Дефолт частіше трапляється серед молодших клієнтів: **12.3%** у групі 18-25 років проти **3.7%** у 65+ - вік один із найсильніших предикторів.
-- Дохід і сума кредиту мають довгий правий хвіст (типові для грошових сум логнормальні розподіли), молодші/дефолтні позичальники частіше беруть менші кредити.
-- `EXT_SOURCE_1/2/3` (зовнішні скорингові бали) - найсильніші за модулем кореляції з таргетом (від -0.16 до -0.18) і мають помітно різні щільності для класів 0 і 1.
-- IQR-аналіз показує багато "викидів" у бінарних/рейтингових колонках (`REGION_RATING_CLIENT`, `FLAG_*`) - це артефакт методу на дискретних змінних, а не справжні аномалії.
+### Missing and invalid values
 
-![Розподіли ключових фіч за таргетом](images/distributions_by_target.png)
+- 67 of 122 columns have missing values, about 23-24% of all cells. 41 features are more than 50% missing (mostly housing characteristics: `COMMONAREA_*`, `NONLIVINGAPARTMENTS_*`, `LIVINGAPARTMENTS_*` with ~68-70% NaN).
+- `DAYS_EMPLOYED` contains the placeholder value **365243** instead of real employment length. It is clearly a code for "unemployed/pensioner", not a missing value; after replacing it with NaN the distribution looks reasonable.
+- Categorical columns use `XNA` as a hidden missing value: `CODE_GENDER` (4 rows), `ORGANIZATION_TYPE` (55,374 rows).
+- The missing-value pattern is almost identical in train and test (difference below 1.5 points for every column), which is a good sign of no data leakage.
 
-### Залежність фічей одна від одної (мультиколінеарність)
+![Missing values](images/missing_values.png)
 
-- Знайдено **47 пар фічей з r > 0.95** - фактично дублікати (наприклад `AMT_CREDIT` <-> `AMT_GOODS_PRICE`: 0.987, `DAYS_BIRTH` <-> `AGE`: -1.0, три групи `_AVG/_MODE/_MEDI` для однієї й тієї ж характеристики житла). Варто лишати по одній фічі з кожної пари, але оперуючи логікою, моожна і не виключати.
-- Дані з `bureau` (кредитна історія) додають сигнал: клієнти з простроченнями (`HAS_DELINQUENCY`) мають вищий дефолт (15.9% проти 8.0%), але сирий лічильник попередніх кредитів майже не корелює з таргетом (-0.01).
+### Distributions and relation to the target
 
-![Кореляції та надлишковість фічей](images/correlation_redundancy.png)
+- Younger clients default more often: **12.3%** in the 18-25 group vs **3.7%** for 65+. Age is one of the strongest predictors.
+- Income and credit amount have long right tails (the lognormal shape typical for money amounts). Younger and defaulting borrowers more often take smaller loans.
+- `EXT_SOURCE_1/2/3` (external credit scores) have the strongest absolute correlation with the target (-0.16 to -0.18), and their densities differ clearly between classes 0 and 1.
+- IQR analysis flags many "outliers" in binary and rating columns (`REGION_RATING_CLIENT`, `FLAG_*`). This is an artifact of the method on discrete variables, not real anomalies.
+
+![Key feature distributions by target](images/distributions_by_target.png)
+
+![Ext Sources distributions by target](./images/ext_sources_by_target.png)
+
+In all three external scores, defaulters sit lower. For `EXT_SOURCE_1` and `EXT_SOURCE_3` the defaulter density peaks around 0.2-0.3, while non-defaulters peak around 0.6-0.65, and the curves cross near 0.4-0.45. `EXT_SOURCE_2` is skewed left for both classes, with a shared peak near 0.6, but defaulters have a much thicker tail below 0.4. The classes still overlap a lot, so no single score separates them on its own. That is why the model combines all three with other features.
+
+### Feature redundancy (multicollinearity)
+
+- There are **47 feature pairs with r > 0.95**, effectively duplicates (for example `AMT_CREDIT` <-> `AMT_GOODS_PRICE`: 0.987, `DAYS_BIRTH` <-> `AGE`: -1.0, and the three `_AVG/_MODE/_MEDI` groups for the same housing characteristic). It makes sense to keep one feature from each pair, although with a good reason both can stay.
+- `bureau` data (credit history) adds signal: clients with overdue payments (`HAS_DELINQUENCY`) default more often (15.9% vs 8.0%), but the raw count of previous loans barely correlates with the target (-0.01).
+- About 14% of clients have no `bureau` history, and they default more often: 10.1% vs 7.7%. So the absence of history also became a feature (`HAS_BUREAU`).
+
+![Correlations and feature redundancy](images/correlation_redundancy.png)
 
 ## Validation
 
@@ -41,9 +56,9 @@
 
 There was done Adversarial validation between the transformed train and transformed test set. Those transformations are can be seen in ml.ipynb, like feature engineering and handling missing values. 
 
-So mainly, there are some key drivers for train/test mismatch "categorical__NAME_CONTRACT_TYPE_Cash loans" column, financial scale features (AMT_ANNUITY, AMT_CREDIT, AMT_GOODS_PRICE), external scores and temporal Features (EXT_SOURCE_1, YEARS_SINCE_ID_PUBLISH, BUREAU_DAYS_SINCE_LAST_LOAN). That shift distribution can explain why the diffuculty of competition and why the maxium ROC AUC is near 0.8. 
+So mainly, there are some key drivers for train/test mismatch "categorical__NAME_CONTRACT_TYPE_Cash loans" column, financial scale features (AMT_ANNUITY, AMT_CREDIT, AMT_GOODS_PRICE), external scores and temporal Features (EXT_SOURCE_1, YEARS_SINCE_ID_PUBLISH, BUREAU_DAYS_SINCE_LAST_LOAN). That shift distribution can explain why the difficulty of competition and why the maximum ROC AUC is near 0.8. 
 
-### Deep learing validation
+### Deep learning validation
 
 Validation evaluation was done by calculating ROC AUC for validation set that were get by stratified split 80% / 20%. As I wrote above the test has other distribution and it is different from our validation(train) distribution that's why we get pretty optimistic evaluation
 
@@ -57,7 +72,63 @@ Model3: 0.72489 / 0.739
 
 Model4: 0.74725 / 0.756
 
-Each model is described Deep learing model section.
+Each model is described Deep learning model section.
+
+## Machine Learning Model
+
+XGBoost with stratified 5-fold CV. The Kaggle prediction is the mean of the five fold models.
+
+To limit overfitting, the trees are kept shallow (`max_depth=4`) and regularized with `min_child_weight`, `reg_lambda` (L2) and `gamma`, plus row and column subsampling. The eval metric is ROC-AUC (`eval_metric='auc'`), and early stopping ends training once validation AUC has not improved for 100 rounds, so each fold keeps its best iteration (1387-1977 trees out of the 3000 allowed).
+
+### Settings
+
+| Parameter | Value |
+|-----------|-------|
+| n_estimators / early stopping | 3000 / 100 rounds on val AUC |
+| max_depth / learning_rate | 4 / 0.03 |
+| min_child_weight / reg_lambda / gamma | 50 / 5 / 1 |
+| subsample / colsample_bytree | 0.8 / 0.5 |
+
+### Training
+
+![Train and validation curves for fold 1](./images/train_val_changes.png)
+
+Log loss, F1 and ROC-AUC per boosting round on fold 1. Validation metrics flatten after about 400-600 rounds, while the train curves keep improving, so the later trees mostly fit the training data. Early stopping cuts training at the validation AUC plateau.
+
+![Confusion Matrix](./images/confusion_matrix.png)
+
+Out-of-fold predictions at the threshold that maximizes F1 (0.151). The model catches 10,889 of 24,825 defaulters (recall 0.44), and about one in four flagged clients actually defaults (precision 0.25). The cost is 32,103 good clients flagged as risky.
+
+### Results
+
+| Metric | Train | Validation |
+|--------|-------|------------|
+| ROC-AUC | 0.808 | 0.771 ± 0.004 |
+| PR-AUC | 0.322 | 0.260 ± 0.007 (baseline 0.081) |
+| F1 | 0.363 | 0.322 ± 0.008 |
+
+On Kaggle: **0.76374** private / 0.76225 public.
+
+![Kaggle Machine Learning Results](./images/ml_results.png)
+
+### Feature importance
+
+Top 10 features by XGBoost gain importance, averaged over the five fold models. Descriptions of raw columns come from `HomeCredit_columns_description.csv`; engineered features are described from the notebook code.
+
+| Rank | Feature | Gain | Description |
+|------|---------|------|-------------|
+| 1 | `EXT_SOURCE_2` | 0.074 | Normalized score from external data source |
+| 2 | `HAS_BUREAU` | 0.070 | Engineered: 1 if the client has any loans in `bureau` |
+| 3 | `EXT_SOURCE_3` | 0.067 | Normalized score from external data source |
+| 4 | `NAME_EDUCATION_TYPE` = Higher education | 0.048 | Level of highest education the client achieved |
+| 5 | `NAME_INCOME_TYPE` = Working | 0.033 | Client's income type (businessman, working, maternity leave, ...) |
+| 6 | `DOCUMENT_FLAG_SCORE` | 0.029 | Engineered: share of `FLAG_DOCUMENT_2..21` the client provided |
+| 7 | `EXT_SOURCE_1` | 0.026 | Normalized score from external data source |
+| 8 | `NAME_EDUCATION_TYPE` = Secondary / secondary special | 0.025 | Level of highest education the client achieved |
+| 9 | `POS_MONTHS_SINCE_DPD` | 0.020 | Engineered: months since the last late payment (`SK_DPD_DEF` > 0) on POS/cash loans, 999 if never late |
+| 10 | `DAYS_EMPLOYED_ANOM` | 0.019 | Engineered: 1 if `DAYS_EMPLOYED` holds the 365243 placeholder |
+
+All three external scores are in the top 10. Four of the ten are engineered features, and two of them are built from the auxiliary tables (`HAS_BUREAU`, `POS_MONTHS_SINCE_DPD`).
 
 ## Deep Learning Model
 
@@ -90,7 +161,7 @@ before the final prediction.
 
 | Component | Type | Key Detail |
 |-----------|------|------------|
-| `MyLinearLayer` | Reimplementation | Default PyTorch weigh intialization |
+| `MyLinearLayer` | Reimplementation | Default PyTorch weight initialization |
 | `FeatureGatingLayer` | Original | LeCun init, sigmoid gate |
 | `MyBatchNorm` | Reimplementation | Manual running stats |
 | `MyAdam` | Optimizer | 1st/2nd moment + bias correction |
@@ -133,8 +204,8 @@ Here you can see all charts with metrics: https://wandb.ai/ilukianets-kyiv-schoo
 ### Conclusion
 
 The best model achieved a local validation AUROC of **0.756** and a 
-Kaggle private score of **0.747**, compared to the XGBoost baseline 
-of **0.7706**. The neural network performs reasonably well but does not 
+Kaggle private score of **0.747**, compared to the XGBoost baseline Kaggle
+private score of **0.76374**. The neural network performs reasonably well but does not 
 yet surpass the tree-based baseline, which is a common finding on 
 tabular datasets where gradient boosting tends to dominate.
 
@@ -146,34 +217,40 @@ remaining auxiliary tables (credit card balances, installment payments).
 
 ### Ensembling
 
-### Моделі: XGBoost + CatBoost + LogisticRegression (ансамбль)
+### Models: XGBoost + CatBoost + LogisticRegression (ensemble)
 
-- **XGBoost** (5-fold CV, з повним пайплайном препроцесингу вбудованим у sklearn `Pipeline`) - єдина модель, яка реально навчилась: OOF ROC-AUC = **0.761**.
-- **Logistic Regression** і **CatBoost** у Part 2 отримують на вхід "сирий" `X_train_val` без кодування категоріальних колонок. Обидві моделі впали з помилкою `could not convert string to float: 'Cash loans'`, і в коді це "тихо" підмінюється заглушкою (LR -> випадкові числа, CatBoost -> константа 0.5 для кожного фолда). Формальний AUC CatBoost = **0.5000** (точно рандом), LogReg = **0.4953** - тобто обидві моделі по суті нічого не передбачають, а падіння прикрите try/except.
-- Через це **Simple Average (0.581)** і **Weighted Average (0.658)** істотно гірші за один XGBoost, бо усереднюють корисний сигнал із двома шумовими джерелами. **Stacking (0.765)** не сильно рятує ситуацію лише тому, тому-що мета-модель (логрегресія на OOF-предиктах) навчилась ігнорувати шумові колонки LR/CatBoost і фактично копіює XGBoost, лиш іноді посилаючись на інші моделі.
-- Висновок: заявлений "ансамбль трьох моделей" зараз *de facto* є одним XGBoost - щоб LR/CatBoost дали реальний внесок, потрібно прогнати їх через той самий `ColumnTransformer` (one-hot/impute), що й XGBoost, або для CatBoost - явно передати `cat_features`.
+- **XGBoost** (5-fold CV, with the full preprocessing pipeline inside an sklearn `Pipeline`) is the only model that actually learned: OOF ROC-AUC = **0.761**.
+- **Logistic Regression** and **CatBoost** in Part 2 receive the raw `X_train_val` without encoding the categorical columns. Both failed with `could not convert string to float: 'Cash loans'`, and the code silently replaces them with a stub (LR gives random numbers, CatBoost a constant 0.5 for every fold). The formal AUC of CatBoost is **0.5000** (pure random) and of LogReg **0.4953**, so neither predicts anything, and the failure is hidden by try/except.
+- Because of this, **Simple Average (0.581)** and **Weighted Average (0.658)** are much worse than XGBoost alone, since they average the useful signal with two noise sources. **Stacking (0.765)** holds up only because the meta-model (logistic regression on OOF predictions) learned to ignore the LR/CatBoost noise columns and essentially copies XGBoost, occasionally drawing on the other models.
+- Conclusion: the "three-model ensemble" is *de facto* a single XGBoost. For LR/CatBoost to contribute, they need to go through the same `ColumnTransformer` (one-hot/impute) as XGBoost, or CatBoost needs `cat_features` passed explicitly.
 
-![Порівняння моделей і ROC-криві](images/model_comparison.png)
+![Model comparison and ROC curves](images/model_comparison.png)
 
-## Результати базових ансамблів з kaggle:
+## Basic ensemble results on Kaggle
 
-- Першою була спроба подивитися, чи буде працювати soft-voting навіть при погано заданих параметрів для catboost i LR. Виявилося - ні.
-- Другою була ідея подивитися, який взагалі score можна отримати при звичайному\трохи зміненому xgboost, і який власне baseline. Результат - 0.763
--Третьою була спробу вже реального stacking, хоча й очевидно що при погано заданих компонентах, результат буде не сильно краще звичайного xgboost, однак незважаючи на погано задані параметри, якийсь результат це все ж дало, а саме 0.765
-![Результати ансамблів](images/score_of_basic_ensembling.png)
+- The first attempt checked whether soft voting works even with badly configured CatBoost and LR. It did not.
+- The second idea was to see what score a plain or slightly modified XGBoost gets, i.e. the baseline. Result: 0.763.
+- The third attempt was real stacking. With badly configured components it was clearly not going to beat plain XGBoost by much, but it still gave something: 0.765.
+
+![Ensemble results](images/score_of_basic_ensembling.png)
 
 ## Soft voting
 
 Soft voting of xgboost from ml.ipynb and deep learning model from featured-engineered-dl-model.ipynb got such result on Kaggle:
 
-<img width="980" height="103" alt="Знімок екрана 2026-09-27 о 22 45 09" src="https://github.com/user-attachments/assets/378115af-3d0d-4ef1-be7f-2ef63c091806" />
+<img width="980" height="103" alt="Soft voting Kaggle result" src="https://github.com/user-attachments/assets/378115af-3d0d-4ef1-be7f-2ef63c091806" />
 
 Basically, it was done by finding the mean of two predictions files that xgboost and deep learning models made. From ensemble perspective that's a soft voting with 0.5 trust coefficients. In the end, we got something in the middle between xgboost score and deep learning model
 
-### Файли
+## Conclusion
 
-- `basic-data-exploration-dl.ipynb` - EDA: пропуски, викиди, кореляції, мульти-таблична аналітика.
-- `dl-ensemble-model-stacking.ipynb` - пайплайн XGBoost + спроба CatBoost/LogReg + ансамблювання (Part 1-3).
+XGBoost is the best single model in the project: 0.764 private score on Kaggle vs 0.747 for the best neural network. It overfits mildly (train AUC 0.808 vs validation 0.771), but the results are stable across folds. The Kaggle score is lower than CV because of the train/test distribution shift found by adversarial validation.
+
+### Files
+
+- `basic-data-exploration-dl.ipynb` - EDA: missing values, outliers, correlations, multi-table analysis.
+- `ml.ipynb` - XGBoost on `application` + `bureau` + `POS_CASH_balance`, 5-fold CV, Kaggle submission.
+- `deep-learning-assignment-basic-stacking.ipynb` - XGBoost pipeline + CatBoost/LogReg attempt + ensembling (Part 1-3).
 - `Adversarial_validation.ipynb` - Adversarial validation on transformed data
 - `deep-learning-model.ipynb` - The first deep learning model
 - `featured-engineered-dl-model.ipynb` - Model4 from deep learning section
