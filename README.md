@@ -65,3 +65,7 @@ Basically, it was done by finding the mean of two predictions files that xgboost
 
 - `basic-data-exploration-dl.ipynb` - EDA: пропуски, викиди, кореляції, мульти-таблична аналітика.
 - `dl-ensemble-model-stacking.ipynb` - пайплайн XGBoost + спроба CatBoost/LogReg + ансамблювання (Part 1-3).
+
+
+### AI-usage links:
+Mykola Utkin: https://docs.google.com/document/d/1ZLfL9IkIUjAuPmhv_6ddnlLEch66RpQDP84bpFKz8WQ/edit?usp=sharing - I dont know how to normally share gemini chat history
