@@ -2,6 +2,8 @@
 
 ## Home Credit Default Risk - short summary
 
+Kaggle competition: https://www.kaggle.com/competitions/home-credit-default-risk/
+
 Goal: predict the probability of loan default (metric: ROC-AUC, with PR-AUC as a secondary metric because of class imbalance).
 
 ### Data
