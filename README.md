@@ -35,6 +35,30 @@
 
 ![Кореляції та надлишковість фічей](images/correlation_redundancy.png)
 
+## Validation
+
+### Adversarial validation
+
+There was done Adversarial validation between the transformed train and transformed test set. Those transformations are can be seen in ml.ipynb, like feature engineering and handling missing values. 
+
+So mainly, there are some key drivers for train/test mismatch "categorical__NAME_CONTRACT_TYPE_Cash loans" column, financial scale features (AMT_ANNUITY, AMT_CREDIT, AMT_GOODS_PRICE), external scores and temporal Features (EXT_SOURCE_1, YEARS_SINCE_ID_PUBLISH, BUREAU_DAYS_SINCE_LAST_LOAN). That shift distribution can explain why the diffuculty of competition and why the maxium ROC AUC is near 0.8. 
+
+### Deep learing validation
+
+Validation evaluation was done by calculating ROC AUC for validation set that were get by stratified split 80% / 20%. As I wrote above the test has other distribution and it is different from our validation(train) distribution that's why we get pretty optimistic evaluation
+
+Kaggle private score / local validation
+
+Model1: 0.71661 / 0.732
+
+Model2: 0.72407 / 0.738
+
+Model3: 0.72489 / 0.739
+
+Model4: 0.74725 / 0.756
+
+Each model is described Deep learing model section.
+
 ### Ensembling
 
 ### Моделі: XGBoost + CatBoost + LogisticRegression (ансамбль)
