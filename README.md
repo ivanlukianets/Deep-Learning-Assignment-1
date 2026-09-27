@@ -46,6 +46,13 @@
 
 ![Порівняння моделей і ROC-криві](images/model_comparison.png)
 
+## Результати базових ансамблів з kaggle:
+
+- Першою була спроба подивитися, чи буде працювати soft-voting навіть при погано заданих параметрів для catboost i LR. Виявилося - ні.
+- Другою була ідея подивитися, який взагалі score можна отримати при звичайному\трохи зміненому xgboost, і який власне baseline. Результат - 0.763
+-Третьою була спробу вже реального stacking, хоча й очевидно що при погано заданих компонентах, результат буде не сильно краще звичайного xgboost, однак незважаючи на погано задані параметри, якийсь результат це все ж дало, а саме 0.765
+![Результати ансамблів](images/score_of_basic_ensembling.png)
+
 ## Soft voting
 
 Soft voting of xgboost from ml.ipynb and deep learning model from featured-engineered-dl-model.ipynb got such result on Kaggle:
