@@ -259,7 +259,7 @@ XGBoost is the best single model in the project: 0.764 private score on Kaggle v
 
 
 ### AI-usage links:
-Mykola Utkin: https://docs.google.com/document/d/1ZLfL9IkIUjAuPmhv_6ddnlLEch66RpQDP84bpFKz8WQ/edit?usp=sharing - I dont know how to normally share gemini chat history
+Mykola Utkin: https://docs.google.com/document/d/1ZLfL9IkIUjAuPmhv_6ddnlLEch66RpQDP84bpFKz8WQ/edit?usp=sharing and https://claude.ai/share/26efb7e2-81da-42fd-85df-a84d7c71548a - I dont know how to normally share gemini chat history
 
 Ivan Lukianets: Claude: https://claude.ai/share/3ff87479-d791-4b32-942b-82aedd1bb1ee Gemini: https://share.gemini.google/UBYvQmA6LngH
 
